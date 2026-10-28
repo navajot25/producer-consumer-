@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Uber – Request a Ride | OS Producer-Consumer Dispatch Simulator</title>
+  <meta name="description" content="Authentic Uber ride-booking web dashboard demonstrating Operating Systems Producer-Consumer problem, Bounded Buffer, and Semaphores." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ==========================================================================
+       UBER GLOBAL TOP NAVIGATION BAR
+       ========================================================================== -->
+  <header class="uber-navbar">
+    <div class="uber-nav-container">
+      <!-- Uber Brand Logo & Primary Nav Tabs -->
+      <div class="uber-nav-left">
+        <div class="uber-logo">Uber</div>
+        <div class="uber-os-badge" title="Operating System Dispatch Core">Cloud Dispatch OS</div>
+        <nav class="uber-main-nav">
+          <button class="nav-item active" data-nav="ride">
+            <span class="nav-item-icon">🚗</span> Ride Arena
+          </button>
+          <button class="nav-item" data-nav="viva">
+            <span class="nav-item-icon">🎓</span> OS Theory & Viva Guide
+          </button>
+        </nav>
+      </div>
+
+      <!-- City Selector & Telemetry & Quick Labs -->
+      <div class="uber-nav-right">
+        <div class="uber-city-chip" id="city-badge" title="Click to switch simulation city">
+          <span class="green-beacon"></span>
+          <span id="current-city-label">Bengaluru Central</span>
+        </div>
+
+        <div class="uber-lab-actions">
+          <button id="btn-race-demo" class="uber-pill-btn lab-danger" title="Demonstrate what happens when two drivers accept the same ride without Mutex">
+            <span>⚡ Race Condition Lab</span>
+          </button>
+          <button id="btn-deadlock-demo" class="uber-pill-btn lab-warning" title="Demonstrate why the order of wait(empty) and wait(mutex) matters">
+            <span>🔒 Deadlock Lab</span>
+          </button>
+          <button id="btn-step-mode" class="uber-pill-btn lab-step" title="Step through synchronization one primitive at a time">
+            <span>👣 Step Mode: <strong id="step-mode-status">OFF</strong></span>
+          </button>
+        </div>
+
+        <div class="uber-icon-tools">
+          <button id="theme-toggle-btn" class="uber-icon-btn" title="Toggle Light / Dark Theme" aria-label="Toggle Theme">
+            <span id="theme-icon">🌙</span>
+          </button>
+          <button id="sound-toggle-btn" class="uber-icon-btn" title="Toggle Sound Chimes" aria-label="Toggle Sound">
+            <span id="sound-icon">🔊</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==========================================================================
+       SUB-NAV: SIMULATION CONTROL BAR
+       ========================================================================== -->
+  <section class="uber-control-bar">
+    <div class="control-bar-inner">
+      <div class="sim-flow-controls">
+        <button id="btn-auto-sim" class="uber-btn-sim live-btn" title="Run continuous live rider and driver simulation">
+          <span class="pulse-dot"></span>
+          <span id="auto-btn-text">Start Live Simulation</span>
+        </button>
+        <button id="btn-pause-sim" class="uber-btn-sim" title="Pause or Resume simulation">
+          <span id="pause-icon">⏸</span> <span id="pause-text">Pause</span>
+        </button>
+        <button id="btn-reset-sim" class="uber-btn-sim" title="Reset queue and all semaphores">
+          <span>🔄</span> Reset
+        </button>
+      </div>
+
+      <div class="sim-config-controls">
+        <div class="config-group">
+          <span class="config-label">Buffer Capacity:</span>
+          <div class="uber-seg-buttons" id="capacity-selector">
+            <button class="seg-btn" data-cap="3">3</button>
+            <button class="seg-btn active" data-cap="5">5</button>
+            <button class="seg-btn" data-cap="7">7</button>
+            <button class="seg-btn" data-cap="10">10</button>
+          </div>
+        </div>
+
+        <div class="config-group">
+          <span class="config-label">Speed:</span>
+          <div class="uber-seg-buttons" id="speed-selector">
+            <button class="seg-btn" data-speed="slow">Slow</button>
+            <button class="seg-btn active" data-speed="normal">Normal</button>
+            <button class="seg-btn" data-speed="fast">Fast</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       STEP-BY-STEP STEPPER BAR (Visible when Step Mode is ON)
+       ========================================================================== -->
+  <section class="step-mode-banner hidden" id="step-mode-banner">
+    <div class="step-banner-content">
+      <div class="step-banner-left">
+        <span class="step-live-badge">STEP MODE ACTIVE</span>
+        <span class="step-desc-text" id="step-guide-text">Click "Next Step" to advance the OS synchronization instructions.</span>
+      </div>
+      <div class="step-banner-actions">
+        <span class="step-counter" id="step-counter-label">Step 0 of 6</span>
+        <button id="btn-next-step" class="btn-next-step" disabled>
+          <span>Next Step ➔</span>
+        </button>
+        <button id="btn-cancel-step" class="btn-cancel-step" title="Cancel current step execution">
+          <span>✕ Cancel</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       "WHAT'S HAPPENING?" DYNAMIC CONVERSATIONAL EXPLANATION PANEL
+       ========================================================================== -->
+  <section class="explanation-strip-container">
+    <div class="explanation-card" id="explanation-card">
+      <div class="explanation-icon-wrapper" id="explanation-icon-wrapper">
+        <span id="explanation-icon">💡</span>
+      </div>
+      <div class="explanation-body">
+        <div class="explanation-meta">
+          <span class="explanation-tag" id="explanation-tag">UBER DISPATCH ENGINE</span>
+          <span class="explanation-timestamp" id="explanation-time">Ready</span>
+        </div>
+        <p class="explanation-message" id="explanation-text">
+          System is ready. Request a ride using the <strong>Rider App</strong> on the left, monitor the <strong>Dispatch Buffer</strong> in the center, or accept requests from the <strong>Driver Partner Portal</strong> on the right!
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       MAIN 3-COLUMN ARENA: RIDER (PRODUCER) | DISPATCH BUFFER | DRIVER (CONSUMER)
+       ========================================================================== -->
+  <main class="main-stage-container" id="main-booking-view">
+    <div class="stage-grid">
+
+      <!-- =====================================================================
+           COLUMN 1: RIDER BOOKING APP (PRODUCER)
+           ===================================================================== -->
+      <section class="stage-column rider-column" aria-label="Uber Rider Booking App">
+        <div class="column-header">
+          <div class="col-title-wrap">
+            <span class="col-icon">👤</span>
+            <div>
+              <h2 class="col-title">Rider Booking App</h2>
+              <span class="col-role-sub">Producer &bull; Creates Ride Requests</span>
+            </div>
+          </div>
+          <span class="col-count-badge" id="rider-count-badge">0 requests</span>
+        </div>
+
+        <div class="booking-card-main">
+          <!-- Top Category Tabs (Ride, Auto, Moto, Sedan, XL) -->
+          <div class="service-categories-bar">
+            <button class="cat-tab active" data-cat="ride">
+              <span class="cat-icon">🚗</span>
+              <span class="cat-name">Ride</span>
+            </button>
+            <button class="cat-tab" data-cat="auto">
+              <span class="cat-icon">🛺</span>
+              <span class="cat-name">Auto</span>
+            </button>
+            <button class="cat-tab" data-cat="moto">
+              <span class="cat-icon">🛵</span>
+              <span class="cat-name">Moto</span>
+            </button>
+            <button class="cat-tab" data-cat="sedan">
+              <span class="cat-icon">🚙</span>
+              <span class="cat-name">Sedan</span>
+            </button>
+            <button class="cat-tab" data-cat="xl">
+              <span class="cat-icon">🚐</span>
+              <span class="cat-name">UberXL</span>
+            </button>
+          </div>
+
+          <div class="booking-heading-row">
+            <h3 class="booking-headline">Request a ride now</h3>
+            <div class="passenger-picker-wrap">
+              <span class="passenger-avatar">👤</span>
+              <select id="rider-profile-select" class="passenger-dropdown" title="Select Passenger Profile">
+                <option value="0">For Me (Aarav Sharma ⭐4.95)</option>
+                <option value="1">For Priya Patel (⭐4.92)</option>
+                <option value="2">For Rahul Sen (⭐4.88)</option>
+                <option value="3">For Sneha Rao (⭐4.97)</option>
+                <option value="4">For Vikram Malhotra (⭐4.91)</option>
+                <option value="5">For Ananya Iyer (⭐4.96)</option>
+                <option value="6">For Kabir Sen (⭐4.89)</option>
+                <option value="7">For Meera Reddy (⭐4.94)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Address Inputs with Route Track -->
+          <div class="uber-address-card">
+            <div class="route-line-track">
+              <span class="route-pickup-dot"></span>
+              <span class="route-stem-line"></span>
+              <span class="route-drop-square"></span>
+            </div>
+
+            <div class="route-inputs-container">
+              <div class="uber-input-field">
+                <input type="text" id="pickup-input" class="address-input" value="Tech Park" placeholder="Pickup location" readonly />
+              </div>
+
+              <div class="uber-input-field">
+                <input type="text" id="destination-input" class="address-input" value="Airport T2" placeholder="Where to?" readonly />
+                <span class="input-clear-btn" id="btn-swap-locations" title="Swap pickup and destination">⇅</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Popular Destination Chips -->
+          <div class="popular-chips-bar">
+            <span class="popular-tag">Popular:</span>
+            <div class="chips-list">
+              <button class="uber-chip active" data-pickup="Tech Park" data-dest="Airport T2">✈️ Airport T2</button>
+              <button class="uber-chip" data-pickup="City Center" data-dest="Tech Park">🏢 Tech Park</button>
+              <button class="uber-chip" data-pickup="Metro Station" data-dest="College Road">🎓 University</button>
+              <button class="uber-chip" data-pickup="MG Road" data-dest="Central Hospital">🏥 Hospital</button>
+              <button class="uber-chip" data-pickup="Railway Station" data-dest="City Center">🛍️ Mall</button>
+            </div>
+          </div>
+
+          <!-- Available Uber Vehicle Products -->
+          <div class="uber-products-section">
+            <div class="products-header">
+              <span class="products-title">Choose a ride</span>
+              <span class="products-subtitle">All prices incl. taxes</span>
+            </div>
+
+            <div class="uber-products-list" id="vehicle-products-list">
+              <!-- Uber Go -->
+              <div class="uber-product-card active" data-type="ubergo" data-fare="185">
+                <div class="product-veh-icon">🚗</div>
+                <div class="product-info-col">
+                  <div class="product-title-row">
+                    <span class="product-name">Uber Go</span>
+                    <span class="product-capacity">👤 4</span>
+                  </div>
+                  <span class="product-eta">4 mins away &bull; Affordable, compact AC</span>
+                </div>
+                <div class="product-fare-col">
+                  <span class="product-fare">₹185</span>
+                </div>
+              </div>
+
+              <!-- Uber Auto -->
+              <div class="uber-product-card" data-type="auto" data-fare="110">
+                <div class="product-veh-icon">🛺</div>
+                <div class="product-info-col">
+                  <div class="product-title-row">
+                    <span class="product-name">Uber Auto</span>
+                    <span class="product-capacity">👤 3</span>
+                  </div>
+                  <span class="product-eta">3 mins away &bull; Doorstep pickup</span>
+                </div>
+                <div class="product-fare-col">
+                  <span class="product-fare">₹110</span>
+                </div>
+              </div>
+
+              <!-- Go Sedan -->
+              <div class="uber-product-card" data-type="sedan" data-fare="230">
+                <div class="product-veh-icon">🚙</div>
+                <div class="product-info-col">
+                  <div class="product-title-row">
+                    <span class="product-name">Go Sedan</span>
+                    <span class="product-capacity">👤 4</span>
+                  </div>
+                  <span class="product-eta">4 mins away &bull; Comfortable sedan</span>
+                </div>
+                <div class="product-fare-col">
+                  <span class="product-fare">₹230</span>
+                </div>
+              </div>
+
+              <!-- Uber Premier -->
+              <div class="uber-product-card" data-type="premier" data-fare="290">
+                <div class="product-veh-icon">🚘</div>
+                <div class="product-info-col">
+                  <div class="product-title-row">
+                    <span class="product-name">Uber Premier</span>
+                    <span class="product-capacity">👤 4</span>
+                  </div>
+                  <span class="product-eta">5 mins away &bull; Premium comfort</span>
+                </div>
+                <div class="product-fare-col">
+                  <span class="product-fare">₹290</span>
+                </div>
+              </div>
+
+              <!-- Uber XL -->
+              <div class="uber-product-card" data-type="xl" data-fare="410">
+                <div class="product-veh-icon">🚐</div>
+                <div class="product-info-col">
+                  <div class="product-title-row">
+                    <span class="product-name">Uber XL</span>
+                    <span class="product-capacity">👤 6</span>
+                  </div>
+                  <span class="product-eta">6 mins away &bull; Spacious SUV</span>
+                </div>
+                <div class="product-fare-col">
+                  <span class="product-fare">₹410</span>
+                </div>
+              </div>
+
+              <!-- Uber Moto -->
+              <div class="uber-product-card" data-type="moto" data-fare="65">
+                <div class="product-veh-icon">🛵</div>
+                <div class="product-info-col">
+                  <div class="product-title-row">
+                    <span class="product-name">Uber Moto</span>
+                    <span class="product-capacity">👤 1</span>
+                  </div>
+                  <span class="product-eta">2 mins away &bull; Quick bike taxi</span>
+                </div>
+                <div class="product-fare-col">
+                  <span class="product-fare">₹65</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Payment & Booking Action Footer -->
+          <div class="booking-action-footer">
+            <div class="payment-selector-bar">
+              <div class="pay-method-left">
+                <span class="pay-badge-icon">💳</span>
+                <select id="payment-method-select" class="pay-dropdown">
+                  <option value="UPI (Google Pay)">Google Pay (UPI)</option>
+                  <option value="UPI (PhonePe)">PhonePe (UPI)</option>
+                  <option value="Cash to Driver">Cash to Driver</option>
+                  <option value="Uber Cash">Uber Cash (₹850 balance)</option>
+                </select>
+              </div>
+              <span class="promo-applied-tag">🏷️ PROMO APPLIED</span>
+            </div>
+
+            <!-- Primary Request Button (Producer Trigger) -->
+            <button id="btn-book-ride" class="uber-primary-cta" title="Create a new ride request and put it into the Bounded Buffer">
+              <span id="booking-cta-text">Request Uber Go &bull; ₹185</span>
+              <span class="cta-arrow">➔</span>
+            </button>
+            <div class="producer-os-subtext">Calls: <code>wait(empty)</code> ➔ <code>wait(mutex)</code> ➔ <code>enqueue</code> ➔ <code>signal(full)</code></div>
+          </div>
+        </div>
+
+        <!-- Active Rider Animation Card -->
+        <div class="actor-showcase-box" id="active-rider-showcase">
+          <div class="idle-placeholder" id="rider-idle-placeholder">
+            <div class="idle-avatar">👤</div>
+            <p>Click <strong>"Request Uber Go"</strong> to book a trip.</p>
+          </div>
+          <div class="active-actor-card hidden" id="active-rider-card">
+            <!-- Dynamically populated when a rider books -->
+          </div>
+        </div>
+
+        <!-- Waiting Line for Riders (Buffer Full Blocking Area) -->
+        <div class="waiting-area-wrapper">
+          <div class="waiting-area-header">
+            <div class="waiting-title">
+              <span>⏳ Waiting Riders Bay</span>
+              <small>(Queue is Full / wait(empty) Blocked)</small>
+            </div>
+            <span class="waiting-count-badge" id="waiting-riders-badge">0</span>
+          </div>
+
+          <div class="waiting-queue-lane" id="waiting-riders-lane">
+            <div class="waiting-empty-msg" id="waiting-riders-empty">
+              No riders blocked. Free slots available in dispatch queue.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =====================================================================
+           COLUMN 2: CENTRAL CLOUD DISPATCH BUFFER (BOUNDED BUFFER)
+           ===================================================================== -->
+      <section class="stage-column queue-column" aria-label="Uber Cloud Dispatch Buffer">
+        <div class="column-header queue-header">
+          <div class="col-title-wrap">
+            <span class="col-icon">☁️</span>
+            <div>
+              <h2 class="col-title">Dispatch Buffer</h2>
+              <span class="col-role-sub">Bounded Buffer &bull; Shared Memory Array</span>
+            </div>
+          </div>
+          <div class="queue-meta-stats">
+            <span class="queue-capacity-tag" id="queue-occupancy-tag">0 / 5 Filled</span>
+          </div>
+        </div>
+
+        <!-- Mutex Lock Dynamic Status Banner -->
+        <div class="mutex-status-banner unlocked" id="mutex-banner">
+          <div class="mutex-indicator-icon" id="mutex-icon">🔓</div>
+          <div class="mutex-text-content">
+            <div class="mutex-headline" id="mutex-headline">MUTEX: UNLOCKED</div>
+            <div class="mutex-subline" id="mutex-subline">Shared memory is free. 1 process may enter critical section.</div>
+          </div>
+        </div>
+
+        <!-- Physical Queue Cards (01, 02, 03, 04, 05) -->
+        <div class="physical-queue-board" id="physical-queue-board">
+          <!-- Slots rendered dynamically -->
+        </div>
+
+        <!-- Queue Progress Meter Bar -->
+        <div class="queue-meter-wrap">
+          <div class="queue-meter-bar" id="queue-meter-bar" style="width: 0%;"></div>
+        </div>
+
+        <!-- OS Semaphores Status Panel -->
+        <div class="system-status-card">
+          <div class="status-card-header">
+            <div class="status-title-group">
+              <span class="status-shield-icon">⚙️</span>
+              <div>
+                <h3>OS SYNCHRONIZATION PRIMITIVES</h3>
+                <small>Hardware / Kernel Synchronization State</small>
+              </div>
+            </div>
+            <div class="status-badge-live">LIVE MONITOR</div>
+          </div>
+
+          <div class="status-primitives-grid">
+            <!-- EMPTY Counting Semaphore -->
+            <div class="primitive-card empty-card" id="card-empty-sem">
+              <div class="primitive-top">
+                <span class="primitive-name">EMPTY</span>
+                <span class="primitive-type">Counting Semaphore</span>
+              </div>
+              <div class="primitive-value" id="val-empty">5</div>
+              <div class="primitive-desc" id="desc-empty">5 slots available</div>
+              <div class="primitive-formula">wait(empty) on booking</div>
+            </div>
+
+            <!-- FULL Counting Semaphore -->
+            <div class="primitive-card full-card" id="card-full-sem">
+              <div class="primitive-top">
+                <span class="primitive-name">FULL</span>
+                <span class="primitive-type">Counting Semaphore</span>
+              </div>
+              <div class="primitive-value" id="val-full">0</div>
+              <div class="primitive-desc" id="desc-full">0 rides waiting</div>
+              <div class="primitive-formula">signal(full) after enqueue</div>
+            </div>
+
+            <!-- MUTEX Binary Semaphore -->
+            <div class="primitive-card mutex-card" id="card-mutex-sem">
+              <div class="primitive-top">
+                <span class="primitive-name">MUTEX</span>
+                <span class="primitive-type">Binary Semaphore</span>
+              </div>
+              <div class="primitive-value" id="val-mutex">UNLOCKED</div>
+              <div class="primitive-desc" id="desc-mutex">Shared queue available</div>
+              <div class="primitive-formula">Ensures mutual exclusion</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =====================================================================
+           COLUMN 3: DRIVER PARTNER PORTAL (CONSUMER)
+           ===================================================================== -->
+      <section class="stage-column driver-column" aria-label="Uber Driver Partner Portal">
+        <div class="column-header">
+          <div class="col-title-wrap">
+            <span class="col-icon">🚖</span>
+            <div>
+              <h2 class="col-title">Driver Partner Portal</h2>
+              <span class="col-role-sub">Consumer &bull; Accepts & Fulfills Rides</span>
+            </div>
+          </div>
+          <span class="col-count-badge" id="driver-count-badge">0 completed</span>
+        </div>
+
+        <div class="uber-driver-dock">
+          <div class="driver-dock-header">
+            <div class="driver-duty-badge">
+              <span class="duty-beacon"></span>
+              <span>DRIVER: <strong>ON DUTY</strong></span>
+            </div>
+            <div class="driver-payout-counter">
+              <small>Today's Payout</small>
+              <strong id="driver-payout-text">₹1,420</strong>
+            </div>
+          </div>
+
+          <div class="driver-selection-row">
+            <label for="driver-profile-select" class="dock-label">Active Partner:</label>
+            <select id="driver-profile-select" class="driver-select-box">
+              <option value="0">👨‍✈️ Amit Kumar &bull; Swift Dzire (⭐4.92 • 1,420 trips)</option>
+              <option value="1">👨‍✈️ Rohan Verma &bull; Hyundai Aura (⭐4.88 • 980 trips)</option>
+              <option value="2">👩‍✈️ Neha Sharma &bull; Bajaj RE Auto (⭐4.97 • 2,150 trips)</option>
+              <option value="3">👨‍✈️ Vikram Singh &bull; Ertiga XL (⭐4.95 • 3,200 trips)</option>
+              <option value="4">👨‍✈️ Deepak Joshi &bull; Pulsar 150 (⭐4.89 • 840 trips)</option>
+              <option value="5">👨‍✈️ Manoj Singh &bull; Honda City (⭐4.91 • 1,650 trips)</option>
+              <option value="6">👨‍✈️ Sunil Shetty &bull; WagonR CNG (⭐4.86 • 1,120 trips)</option>
+              <option value="7">👨‍✈️ Kiran Rao &bull; TVS King Auto (⭐4.94 • 1,890 trips)</option>
+            </select>
+          </div>
+
+          <!-- Incoming Ride Offers Radar -->
+          <div class="incoming-offers-box" id="incoming-offers-box">
+            <div class="offer-radar-header">
+              <span class="radar-ping"></span>
+              <span class="radar-title">Incoming Dispatch Radar</span>
+            </div>
+
+            <div class="incoming-offer-card" id="incoming-offer-content">
+              <div class="offer-empty-state" id="offer-empty-state">
+                <span class="offer-icon">📡</span>
+                <p>Waiting for ride requests in the queue...</p>
+              </div>
+              <div class="offer-active-state hidden" id="offer-active-state">
+                <!-- Dynamically populated with oldest waiting ride -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Driver Accept Button (Consumer Trigger) -->
+          <button id="btn-find-ride" class="uber-driver-accept-btn" title="Accept the oldest ride from the Bounded Buffer">
+            <div class="accept-cta-content">
+              <span class="accept-cta-title">ACCEPT RIDE OFFER 🚖</span>
+              <small class="accept-cta-sub">Calls wait(full) ➔ wait(mutex) ➔ dequeue ➔ signal(empty)</small>
+            </div>
+          </button>
+        </div>
+
+        <!-- Active Driver Animation Card -->
+        <div class="actor-showcase-box" id="active-driver-showcase">
+          <div class="idle-placeholder" id="driver-idle-placeholder">
+            <div class="idle-avatar">🚖</div>
+            <p>Click <strong>"ACCEPT RIDE OFFER"</strong> to dispatch driver.</p>
+          </div>
+          <div class="active-actor-card hidden" id="active-driver-card">
+            <!-- Dynamically populated when a driver finds a ride -->
+          </div>
+        </div>
+
+        <!-- Waiting Line for Drivers (Buffer Empty Blocking Area) -->
+        <div class="waiting-area-wrapper">
+          <div class="waiting-area-header">
+            <div class="waiting-title">
+              <span>⏳ Waiting Drivers Bay</span>
+              <small>(Queue is Empty / wait(full) Blocked)</small>
+            </div>
+            <span class="waiting-count-badge" id="waiting-drivers-badge">0</span>
+          </div>
+
+          <div class="waiting-queue-lane" id="waiting-drivers-lane">
+            <div class="waiting-empty-msg" id="waiting-drivers-empty">
+              No drivers blocked. Rides are available or drivers are on active trips.
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ==========================================================================
+       RECENT ACTIVITY & CONCURRENCY LOG FEED
+       ========================================================================== -->
+  <section class="activity-section">
+    <div class="activity-container">
+      <div class="activity-header">
+        <div class="activity-title-group">
+          <span class="feed-icon">📜</span>
+          <h3>Live Activity & Concurrency Telemetry</h3>
+        </div>
+        <div class="activity-controls">
+          <div class="activity-filters" id="log-filters">
+            <button class="filter-tab active" data-filter="ALL">All Events</button>
+            <button class="filter-tab" data-filter="RIDER">Riders (Producers)</button>
+            <button class="filter-tab" data-filter="DRIVER">Drivers (Consumers)</button>
+            <button class="filter-tab" data-filter="SYSTEM">Mutex & Semaphores</button>
+          </div>
+          <button id="btn-clear-feed" class="clear-feed-btn" title="Clear activity history">Clear</button>
+        </div>
+      </div>
+
+      <div class="activity-feed-list" id="activity-feed-list">
+        <!-- Dynamically injected activity records -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       EDUCATIONAL REFERENCE & VIVA ACCORDION (College OS Practical)
+       ========================================================================== -->
+  <section class="educational-section hidden" id="tab-guide-view">
+    <div class="educational-container">
+      <div class="edu-card">
+        <div class="edu-header">
+          <span>🎓</span>
+          <div>
+            <h3>Operating Systems Practical & Viva Reference Guide</h3>
+            <small>Producer-Consumer Problem, Bounded Buffer, Counting & Binary Semaphores</small>
+          </div>
+        </div>
+        <div class="edu-content-grid">
+          <!-- Mapping Table -->
+          <div class="edu-block">
+            <h4>Producer-Consumer Metaphor Mapping</h4>
+            <table class="metaphor-table">
+              <thead>
+                <tr>
+                  <th>OS Concept</th>
+                  <th>Uber Dispatch Equivalent</th>
+                  <th>Mathematical Operation</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Producer</strong></td>
+                  <td>Rider Booking App (Aarav, Priya, Sneha)</td>
+                  <td>Generates ride requests and enqueues them into buffer</td>
+                </tr>
+                <tr>
+                  <td><strong>Consumer</strong></td>
+                  <td>Driver Partner Portal (Amit, Rohan, Neha)</td>
+                  <td>Accepts and fulfills requests from the queue (FIFO)</td>
+                </tr>
+                <tr>
+                  <td><strong>Bounded Buffer</strong></td>
+                  <td>Cloud Dispatch Queue</td>
+                  <td>Fixed size array holding waiting rides ($N$ slots)</td>
+                </tr>
+                <tr>
+                  <td><strong>empty</strong> (Semaphore)</td>
+                  <td>Available slots</td>
+                  <td>Counts free slots in buffer (init = $N$, decremented by rider)</td>
+                </tr>
+                <tr>
+                  <td><strong>full</strong> (Semaphore)</td>
+                  <td>Waiting rides</td>
+                  <td>Counts pending rides (init = $0$, incremented by rider)</td>
+                </tr>
+                <tr>
+                  <td><strong>mutex</strong> (Binary Semaphore)</td>
+                  <td>Queue Access Lock</td>
+                  <td>Guarantees only 1 rider or driver modifies queue at a time (init = $1$)</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Code Snippets Comparison -->
+          <div class="edu-block">
+            <h4>Algorithm Pseudo-Code (C / POSIX Semaphores)</h4>
+            <div class="code-snippet-box">
+              <pre><code>// PRODUCER (RIDER)
+wait(empty);    // Ensure space exists in buffer
+wait(mutex);    // Lock critical section
+buffer[in] = ride_item;
+in = (in + 1) % N;
+signal(mutex);  // Release lock
+signal(full);   // Wake up waiting drivers
+
+// CONSUMER (DRIVER)
+wait(full);     // Ensure at least 1 ride is ready
+wait(mutex);    // Lock critical section
+ride_item = buffer[out];
+out = (out + 1) % N;
+signal(mutex);  // Release lock
+signal(empty);  // Wake up waiting riders</code></pre>
+            </div>
+          </div>
+
+          <!-- Viva Questions -->
+          <div class="edu-block full-width">
+            <h4>Frequently Asked Viva & Exam Questions</h4>
+            <div class="faq-list">
+              <details class="faq-item" open>
+                <summary>Why must wait(empty) happen BEFORE wait(mutex)?</summary>
+                <p>If a rider executes <code>wait(mutex)</code> first when the buffer is already full ($empty = 0$), it locks the queue and then gets blocked on <code>wait(empty)</code> while still holding the Mutex lock. A driver wanting to accept a ride to free up space cannot acquire the lock, resulting in a fatal <strong>Deadlock</strong>!</p>
+              </details>
+              <details class="faq-item">
+                <summary>What is a Race Condition in ride booking?</summary>
+                <p>If two drivers check the queue simultaneously without a Mutex lock, both drivers might read and accept the exact same ride request, resulting in duplicate booking, driver dispute, and corrupted queue pointers.</p>
+              </details>
+              <details class="faq-item">
+                <summary>What are the initial values of the semaphores?</summary>
+                <p>For a bounded buffer of capacity $N$: <code>empty = N</code> (all slots free), <code>full = 0</code> (no items produced yet), and <code>mutex = 1</code> (queue unlocked).</p>
+              </details>
+              <details class="faq-item">
+                <summary>Is this solution Starvation-Free?</summary>
+                <p>Yes. Because the Semaphore wait queues use First-In, First-Out (FIFO) ordering, any thread that blocks is guaranteed to be serviced as soon as slots or items become available.</p>
+              </details>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       MODAL: ACTIVE TRIP TRACKING SHEET (Uber Real-time Ride Experience)
+       ========================================================================== -->
+  <div class="modal-backdrop" id="trip-sheet-modal">
+    <div class="modal-card trip-sheet-card">
+      <div class="modal-header trip-header">
+        <div class="modal-title-wrap">
+          <span class="modal-icon">🎉</span>
+          <div>
+            <h3 id="trip-sheet-title">Ride Confirmed!</h3>
+            <small id="trip-sheet-subtitle">Driver is on the way to pickup</small>
+          </div>
+        </div>
+        <button class="modal-close" id="close-trip-sheet">&times;</button>
+      </div>
+
+      <div class="modal-body trip-sheet-body">
+        <!-- Driver & Car Badge -->
+        <div class="trip-driver-profile">
+          <div class="trip-driver-avatar">👨‍✈️</div>
+          <div class="trip-driver-info">
+            <h4 id="trip-driver-name">Amit Kumar</h4>
+            <p id="trip-driver-car">White Swift Dzire &bull; <strong id="trip-driver-plate">KA-01-AB-1234</strong></p>
+            <span class="trip-driver-rating" id="trip-driver-rating">⭐ 4.92 (1,420 trips)</span>
+          </div>
+          <div class="trip-otp-badge">
+            <small>RIDE PIN / OTP</small>
+            <strong id="trip-otp-pin">4892</strong>
+          </div>
+        </div>
+
+        <!-- Route & Fare Summary -->
+        <div class="trip-route-summary">
+          <div class="route-item">
+            <span class="dot-green"></span>
+            <div>
+              <small>PICKUP</small>
+              <p id="trip-pickup-loc">Tech Park Tower</p>
+            </div>
+          </div>
+          <div class="route-item">
+            <span class="dot-red"></span>
+            <div>
+              <small>DROPOFF</small>
+              <p id="trip-dest-loc">Airport Terminal 2</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Status Timeline -->
+        <div class="trip-status-timeline">
+          <div class="timeline-step done">
+            <span class="step-dot"></span>
+            <span>Request Placed</span>
+          </div>
+          <div class="timeline-step done">
+            <span class="step-dot"></span>
+            <span>Driver Assigned</span>
+          </div>
+          <div class="timeline-step active">
+            <span class="step-dot"></span>
+            <span>Driver Arriving (ETA 2 mins)</span>
+          </div>
+          <div class="timeline-step">
+            <span class="step-dot"></span>
+            <span>Trip in Progress</span>
+          </div>
+        </div>
+
+        <div class="trip-fare-footer">
+          <div class="fare-total">
+            <small>Total Estimated Fare</small>
+            <strong id="trip-fare-total">₹185</strong>
+          </div>
+          <button class="uber-primary-pill" id="btn-complete-trip-preview">
+            <span>✨ Complete Trip</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 1: RACE CONDITION DEMO ("TRY RACE CONDITION")
+       ========================================================================== -->
+  <div class="modal-backdrop" id="race-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="modal-icon">⚡</span>
+          <div>
+            <h3>Race Condition Demonstration</h3>
+            <small>What happens when two drivers accept the same ride without vs with Mutex</small>
+          </div>
+        </div>
+        <button class="modal-close" id="close-race-modal">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="race-scenario-intro">
+          <p><strong>Scenario:</strong> 1 ride is waiting in the queue. Two drivers (<strong>Rohan</strong> & <strong>Neha</strong>) arrive at almost the exact same instant to accept it.</p>
+        </div>
+
+        <div class="race-interactive-stage">
+          <!-- Driver 1 -->
+          <div class="race-driver-box" id="race-driver-rohan">
+            <div class="race-avatar">🚖</div>
+            <h4>Rohan</h4>
+            <span class="race-driver-status" id="rohan-status">Ready</span>
+          </div>
+
+          <!-- Shared Waiting Ride -->
+          <div class="race-ride-card" id="race-target-ride">
+            <div class="ride-card-badge">Ride #101</div>
+            <div class="ride-card-name">Aarav</div>
+            <div class="ride-card-route">📍 Tech Park &rarr; 🎯 Airport T2</div>
+            <div class="ride-card-status" id="race-ride-status">Waiting in Queue</div>
+          </div>
+
+          <!-- Driver 2 -->
+          <div class="race-driver-box" id="race-driver-neha">
+            <div class="race-avatar">🚖</div>
+            <h4>Neha</h4>
+            <span class="race-driver-status" id="neha-status">Ready</span>
+          </div>
+        </div>
+
+        <!-- Lock Indicator in Lab -->
+        <div class="race-lock-indicator" id="race-lock-box">
+          <span id="race-lock-icon">🔓</span>
+          <span id="race-lock-text">Queue Unlocked</span>
+        </div>
+
+        <!-- Live Step Timeline -->
+        <div class="race-timeline" id="race-timeline"></div>
+
+        <!-- Outcome Result Banner -->
+        <div class="race-outcome-box hidden" id="race-outcome-box"></div>
+
+        <!-- Lab Buttons -->
+        <div class="modal-actions-bar">
+          <button class="lab-btn btn-danger-lab" id="btn-run-race-nomutex">
+            ❌ Run WITHOUT Mutex (Race Condition)
+          </button>
+          <button class="lab-btn btn-success-lab" id="btn-run-race-withmutex">
+            ✅ Run WITH Mutex (Synchronized)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 2: DEADLOCK DEMO ("WHY ORDER MATTERS?")
+       ========================================================================== -->
+  <div class="modal-backdrop" id="deadlock-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="modal-icon">🔒</span>
+          <div>
+            <h3>Why Lock Order Matters (Deadlock Demo)</h3>
+            <small>Comparing incorrect vs correct semaphore wait sequence when queue is full</small>
+          </div>
+        </div>
+        <button class="modal-close" id="close-deadlock-modal">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="race-scenario-intro">
+          <p><strong>Scenario:</strong> The ride request queue is completely <strong>FULL (5/5 slots)</strong>. A new rider (<strong>Aarav</strong>) wants to book a ride, and a driver (<strong>Rohan</strong>) wants to accept a ride.</p>
+        </div>
+
+        <div class="deadlock-comparison-grid">
+          <!-- Actor 1: Rider Aarav -->
+          <div class="deadlock-actor-card" id="dl-rider-card">
+            <div class="actor-avatar">👤</div>
+            <h4>Rider (Aarav)</h4>
+            <div class="actor-role">Producer</div>
+            <div class="actor-state-badge" id="dl-rider-status">Wants to Book</div>
+          </div>
+
+          <!-- Shared Full Queue -->
+          <div class="deadlock-queue-card" id="dl-queue-card">
+            <div class="dl-queue-badge">QUEUE FULL (5/5)</div>
+            <div class="dl-queue-info">empty = 0 &bull; full = 5 &bull; mutex = 1</div>
+            <div class="dl-lock-pill" id="dl-lock-pill">🔓 Mutex Unlocked</div>
+          </div>
+
+          <!-- Actor 2: Driver Rohan -->
+          <div class="deadlock-actor-card" id="dl-driver-card">
+            <div class="actor-avatar">🚖</div>
+            <h4>Driver (Rohan)</h4>
+            <div class="actor-role">Consumer</div>
+            <div class="actor-state-badge" id="dl-driver-status">Wants to Accept</div>
+          </div>
+        </div>
+
+        <!-- Timeline -->
+        <div class="race-timeline" id="dl-timeline"></div>
+
+        <!-- Outcome Box -->
+        <div class="race-outcome-box hidden" id="dl-outcome-box"></div>
+
+        <!-- Lab Buttons -->
+        <div class="modal-actions-bar">
+          <button class="lab-btn btn-danger-lab" id="btn-run-dl-wrong">
+            💀 Run WRONG Order: wait(mutex) ➔ wait(empty)
+          </button>
+          <button class="lab-btn btn-success-lab" id="btn-run-dl-correct">
+            🛡️ Run CORRECT Order: wait(empty) ➔ wait(mutex)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Load Scripts -->
+  <script src="audio.js"></script>
+  <script src="semaphore.js"></script>
+  <script src="simulation.js"></script>
+  <script src="labs.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

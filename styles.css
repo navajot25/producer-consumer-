@@ -1,0 +1,1975 @@
+/* ==========================================================================
+   Uber Web Ride Booking Dashboard Design System (uber.com/ride)
+   Coupled with OS Producer-Consumer Bounded Buffer Synchronization
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+:root {
+  /* Uber Light Theme (Default: Crisp Uber Web Style) */
+  --uber-bg: #f8fafc;
+  --uber-surface: #ffffff;
+  --uber-surface-subtle: #f1f5f9;
+  --uber-card: #ffffff;
+  --uber-border: #e2e8f0;
+  --uber-border-strong: #cbd5e1;
+  --uber-border-focus: #000000;
+
+  --uber-black: #000000;
+  --uber-gray-dark: #1f2937;
+  --uber-gray-text: #475569;
+  --uber-gray-muted: #64748b;
+  --uber-text-primary: #0f172a;
+  --uber-text-inverse: #ffffff;
+
+  /* Accent Tones */
+  --uber-blue: #276ef1;
+  --uber-blue-light: #eff6ff;
+  --uber-blue-border: #bfdbfe;
+
+  --uber-green: #059669;
+  --uber-green-light: #ecfdf5;
+  --uber-green-border: #a7f3d0;
+
+  --uber-amber: #d97706;
+  --uber-amber-light: #fffbeb;
+  --uber-amber-border: #fde68a;
+
+  --uber-red: #e11900;
+  --uber-red-light: #fef2f2;
+  --uber-red-border: #fecaca;
+
+  --uber-purple: #7c3aed;
+  --uber-purple-light: #f5f3ff;
+
+  /* Radius & Shadows */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  --shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-floating: 0 12px 30px rgba(0, 0, 0, 0.1);
+  --shadow-focus: 0 0 0 2px #000000;
+
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Uber Dark Mode (Deep Onyx Modern Theme) */
+[data-theme="dark"] {
+  --uber-bg: #090d16;
+  --uber-surface: #131b2e;
+  --uber-surface-subtle: #0f1626;
+  --uber-card: #131b2e;
+  --uber-border: #243048;
+  --uber-border-strong: #334155;
+  --uber-border-focus: #ffffff;
+
+  --uber-black: #ffffff;
+  --uber-gray-dark: #e4e4e7;
+  --uber-gray-text: #cbd5e1;
+  --uber-gray-muted: #94a3b8;
+  --uber-text-primary: #f8fafc;
+  --uber-text-inverse: #0f172a;
+
+  --uber-blue-light: #1e3a8a33;
+  --uber-green-light: #064e3b33;
+  --uber-amber-light: #78350f33;
+  --uber-red-light: #7f1d1d33;
+  --uber-purple-light: #4c1d9533;
+
+  --shadow-subtle: 0 1px 4px rgba(0, 0, 0, 0.3);
+  --shadow-card: 0 4px 14px rgba(0, 0, 0, 0.4);
+  --shadow-floating: 0 12px 32px rgba(0, 0, 0, 0.6);
+  --shadow-focus: 0 0 0 2px #ffffff;
+}
+
+/* Base Reset */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--uber-bg);
+  color: var(--uber-text-primary);
+  line-height: 1.4;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ==========================================================================
+   UBER GLOBAL TOP NAVBAR
+   ========================================================================== */
+.uber-navbar {
+  background-color: #000000;
+  color: #ffffff;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  border-bottom: 1px solid #222222;
+}
+
+.uber-nav-container {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 10px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.uber-nav-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.uber-logo {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  color: #ffffff;
+  user-select: none;
+}
+
+.uber-os-badge {
+  font-size: 10px;
+  font-weight: 700;
+  background-color: #276ef1;
+  color: #ffffff;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.uber-main-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nav-item {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  opacity: 0.75;
+  padding: 8px 14px;
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: var(--transition-fast);
+}
+
+.nav-item:hover {
+  opacity: 1;
+  background-color: #1f2937;
+}
+
+.nav-item.active {
+  opacity: 1;
+  background-color: #ffffff;
+  color: #000000;
+  font-weight: 700;
+}
+
+.uber-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.uber-city-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #181818;
+  border: 1px solid #333333;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.uber-city-chip:hover {
+  background-color: #262626;
+}
+
+.green-beacon {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #22c55e;
+  animation: beaconPulse 1.5s infinite;
+}
+
+@keyframes beaconPulse {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  50% { transform: scale(1.4); opacity: 1; }
+  100% { transform: scale(0.9); opacity: 0.8; }
+}
+
+.uber-lab-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.uber-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: var(--radius-full);
+  border: 1px solid #333333;
+  background-color: #181818;
+  color: #ffffff;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  white-space: nowrap;
+}
+
+.uber-pill-btn:hover {
+  background-color: #27272a;
+  transform: translateY(-1px);
+}
+
+.lab-danger:hover {
+  border-color: #ef4444;
+  color: #f87171;
+}
+
+.lab-warning:hover {
+  border-color: #f59e0b;
+  color: #fbbf24;
+}
+
+.lab-step.active {
+  background-color: var(--uber-purple);
+  border-color: var(--uber-purple);
+}
+
+.uber-icon-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.uber-icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background-color: #181818;
+  border: 1px solid #333333;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.uber-icon-btn:hover {
+  background-color: #27272a;
+}
+
+/* ==========================================================================
+   SUB-NAV: SIMULATION CONTROLS BAR
+   ========================================================================== */
+.uber-control-bar {
+  background-color: var(--uber-surface);
+  border-bottom: 1px solid var(--uber-border);
+}
+
+.control-bar-inner {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 8px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.sim-flow-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.uber-btn-sim {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--uber-border);
+  background-color: var(--uber-card);
+  color: var(--uber-text-primary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: var(--transition-fast);
+}
+
+.uber-btn-sim:hover {
+  background-color: var(--uber-surface-subtle);
+  border-color: var(--uber-border-strong);
+}
+
+.live-btn {
+  background-color: #000000;
+  color: #ffffff;
+  border-color: #000000;
+}
+
+[data-theme="dark"] .live-btn {
+  background-color: #276ef1;
+  color: #ffffff;
+  border-color: #276ef1;
+}
+
+.pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #22c55e;
+  animation: beaconPulse 1.5s infinite;
+}
+
+.sim-config-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.config-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.config-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--uber-gray-muted);
+}
+
+.uber-seg-buttons {
+  display: flex;
+  background-color: var(--uber-surface-subtle);
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--uber-border);
+}
+
+.seg-btn {
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  border: none;
+  background: transparent;
+  color: var(--uber-gray-text);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.seg-btn.active {
+  background-color: var(--uber-card);
+  color: var(--uber-text-primary);
+  box-shadow: var(--shadow-subtle);
+}
+
+/* ==========================================================================
+   STEP MODE BANNER
+   ========================================================================== */
+.step-mode-banner {
+  max-width: 1440px;
+  margin: 10px auto 0;
+  padding: 0 24px;
+}
+
+.step-mode-banner.hidden { display: none; }
+
+.step-banner-content {
+  background-color: var(--uber-purple-light);
+  border: 1px solid var(--uber-purple);
+  border-radius: var(--radius-md);
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.step-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.step-live-badge {
+  background-color: var(--uber-purple);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+}
+
+.step-desc-text {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.step-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.step-counter {
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--uber-purple);
+}
+
+.btn-next-step {
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  background-color: var(--uber-purple);
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-next-step:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-cancel-step {
+  padding: 5px 8px;
+  font-size: 11px;
+  background: transparent;
+  border: 1px solid var(--uber-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--uber-gray-text);
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   "WHAT'S HAPPENING?" DYNAMIC EXPLANATION BANNER
+   ========================================================================== */
+.explanation-strip-container {
+  max-width: 1440px;
+  margin: 12px auto 0;
+  padding: 0 24px;
+}
+
+.explanation-card {
+  background-color: var(--uber-card);
+  border: 1px solid var(--uber-border);
+  border-left: 4px solid #000000;
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  box-shadow: var(--shadow-subtle);
+}
+
+[data-theme="dark"] .explanation-card {
+  border-left-color: #276ef1;
+}
+
+.explanation-icon-wrapper {
+  font-size: 18px;
+  width: 30px;
+  height: 30px;
+  background-color: var(--uber-surface-subtle);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.explanation-body { flex: 1; }
+
+.explanation-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.explanation-tag {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: var(--uber-blue);
+}
+
+.explanation-timestamp {
+  font-size: 10px;
+  color: var(--uber-gray-muted);
+}
+
+.explanation-message {
+  font-size: 13px;
+  color: var(--uber-text-primary);
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   MAIN 3-COLUMN STAGE ARENA
+   ========================================================================== */
+.main-stage-container {
+  max-width: 1440px;
+  margin: 14px auto 0;
+  padding: 0 24px;
+}
+
+.stage-grid {
+  display: grid;
+  grid-template-columns: 1.05fr 1.25fr 1.05fr;
+  gap: 18px;
+  align-items: flex-start;
+}
+
+@media (max-width: 1080px) {
+  .stage-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.stage-column {
+  background-color: var(--uber-card);
+  border: 1px solid var(--uber-border);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 520px;
+}
+
+.column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--uber-border);
+  padding-bottom: 8px;
+}
+
+.col-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.col-icon { font-size: 18px; }
+
+.col-title {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+  line-height: 1.1;
+}
+
+.col-role-sub {
+  font-size: 10px;
+  color: var(--uber-gray-muted);
+  font-weight: 600;
+}
+
+.col-count-badge {
+  font-size: 10px;
+  font-weight: 700;
+  background-color: var(--uber-surface-subtle);
+  color: var(--uber-gray-text);
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+}
+
+/* ==========================================================================
+   COLUMN 1: UBER RIDER BOOKING APP (PRODUCER)
+   ========================================================================== */
+.booking-card-main {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Category Tabs (Ride, Auto, Moto, Sedan, XL) */
+.service-categories-bar {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--uber-border);
+  padding-bottom: 8px;
+  overflow-x: auto;
+}
+
+.cat-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 5px 8px;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--uber-gray-text);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  white-space: nowrap;
+}
+
+.cat-tab:hover {
+  background-color: var(--uber-surface-subtle);
+  color: var(--uber-text-primary);
+}
+
+.cat-tab.active {
+  background-color: var(--uber-surface-subtle);
+  border-color: var(--uber-border-strong);
+  color: var(--uber-text-primary);
+  font-weight: 700;
+}
+
+.cat-icon { font-size: 16px; }
+.cat-name { font-size: 10px; font-weight: 700; }
+
+.booking-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.booking-headline {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+
+.passenger-picker-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background-color: var(--uber-surface-subtle);
+  border: 1px solid var(--uber-border);
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+}
+
+.passenger-avatar { font-size: 11px; }
+
+.passenger-dropdown {
+  border: none;
+  background: transparent;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--font-sans);
+  color: var(--uber-text-primary);
+  outline: none;
+  cursor: pointer;
+}
+
+/* Iconic Uber Address Input Card */
+.uber-address-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--uber-surface-subtle);
+  border: 1px solid var(--uber-border);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+}
+
+.route-line-track {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 0;
+}
+
+.route-pickup-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #22c55e;
+}
+
+.route-stem-line {
+  width: 2px;
+  height: 24px;
+  background-color: var(--uber-border-strong);
+}
+
+.route-drop-square {
+  width: 7px;
+  height: 7px;
+  background-color: var(--uber-text-primary);
+}
+
+.route-inputs-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.uber-input-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--uber-card);
+  border: 1px solid var(--uber-border);
+  border-radius: var(--radius-sm);
+  padding: 5px 8px;
+}
+
+.address-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  color: var(--uber-text-primary);
+  outline: none;
+}
+
+.input-clear-btn {
+  font-size: 13px;
+  color: var(--uber-gray-muted);
+  cursor: pointer;
+  padding: 2px;
+  user-select: none;
+  transition: var(--transition-fast);
+}
+
+.input-clear-btn:hover { color: var(--uber-text-primary); }
+
+/* Popular Destination Chips */
+.popular-chips-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.popular-tag {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--uber-gray-muted);
+}
+
+.chips-list {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.uber-chip {
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--uber-border);
+  background-color: var(--uber-surface-subtle);
+  color: var(--uber-gray-text);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: var(--transition-fast);
+}
+
+.uber-chip:hover {
+  background-color: var(--uber-card);
+  color: var(--uber-text-primary);
+}
+
+.uber-chip.active {
+  background-color: #000000;
+  color: #ffffff;
+  border-color: #000000;
+}
+
+[data-theme="dark"] .uber-chip.active {
+  background-color: #ffffff;
+  color: #000000;
+  border-color: #ffffff;
+}
+
+/* Available Uber Vehicle Products */
+.uber-products-section {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.products-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.products-title { font-size: 11px; font-weight: 800; }
+.products-subtitle { font-size: 9px; color: var(--uber-gray-muted); }
+
+.uber-products-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.uber-product-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid transparent;
+  background-color: var(--uber-surface-subtle);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.uber-product-card:hover {
+  background-color: var(--uber-surface);
+  border-color: var(--uber-border-strong);
+}
+
+.uber-product-card.active {
+  background-color: var(--uber-card);
+  border-color: #000000;
+  box-shadow: var(--shadow-subtle);
+}
+
+[data-theme="dark"] .uber-product-card.active {
+  border-color: #ffffff;
+}
+
+.product-veh-icon { font-size: 20px; width: 26px; text-align: center; }
+
+.product-info-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-left: 6px;
+}
+
+.product-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.product-name { font-size: 12px; font-weight: 800; }
+.product-capacity { font-size: 9px; color: var(--uber-gray-muted); font-weight: 600; }
+.product-eta { font-size: 9px; color: var(--uber-gray-text); }
+
+.product-fare-col { text-align: right; }
+.product-fare { font-size: 13px; font-weight: 800; }
+
+/* Payment & Primary Booking CTA */
+.booking-action-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: 1px solid var(--uber-border);
+  padding-top: 8px;
+}
+
+.payment-selector-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 8px;
+  background-color: var(--uber-surface-subtle);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--uber-border);
+}
+
+.pay-method-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pay-badge-icon { font-size: 13px; }
+
+.pay-dropdown {
+  border: none;
+  background: transparent;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--font-sans);
+  color: var(--uber-text-primary);
+  outline: none;
+  cursor: pointer;
+}
+
+.promo-applied-tag {
+  font-size: 8px;
+  font-weight: 800;
+  background-color: var(--uber-green-light);
+  color: var(--uber-green);
+  padding: 1px 5px;
+  border-radius: var(--radius-xs);
+}
+
+.uber-primary-cta {
+  background-color: #000000;
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  box-shadow: var(--shadow-card);
+}
+
+[data-theme="dark"] .uber-primary-cta {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+.uber-primary-cta:hover { background-color: #1f2937; }
+[data-theme="dark"] .uber-primary-cta:hover { background-color: #e4e4e7; }
+.uber-primary-cta:active { transform: scale(0.98); }
+
+.cta-arrow { font-size: 14px; font-weight: 800; }
+
+.producer-os-subtext {
+  font-size: 9px;
+  color: var(--uber-gray-muted);
+  text-align: center;
+}
+
+.producer-os-subtext code {
+  color: var(--uber-blue);
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   COLUMN 2: CENTRAL CLOUD DISPATCH BUFFER (BOUNDED BUFFER)
+   ========================================================================== */
+.queue-column {
+  border: 2px solid var(--uber-border-strong);
+}
+
+.queue-header {
+  border-bottom: 1px solid var(--uber-border);
+}
+
+.queue-capacity-tag {
+  font-size: 11px;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  background-color: var(--uber-surface-subtle);
+  border: 1px solid var(--uber-border);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+
+/* Mutex Lock Status Banner */
+.mutex-status-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  transition: var(--transition-normal);
+}
+
+.mutex-status-banner.unlocked {
+  background-color: var(--uber-green-light);
+  border-color: var(--uber-green-border);
+  color: var(--uber-green);
+}
+
+.mutex-status-banner.locked {
+  background-color: var(--uber-amber-light);
+  border-color: var(--uber-amber-border);
+  color: var(--uber-amber);
+  animation: beaconPulse 1.5s infinite;
+}
+
+.mutex-indicator-icon { font-size: 16px; }
+.mutex-headline { font-size: 11px; font-weight: 800; }
+.mutex-subline { font-size: 9px; color: var(--uber-gray-text); }
+
+/* Bounded Buffer Slots Board */
+.physical-queue-board {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 200px;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.queue-slot-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--uber-border);
+  background-color: var(--uber-surface-subtle);
+  transition: var(--transition-normal);
+}
+
+.queue-slot-card.occupied {
+  background-color: var(--uber-card);
+  border-color: #000000;
+  box-shadow: var(--shadow-subtle);
+}
+
+[data-theme="dark"] .queue-slot-card.occupied {
+  border-color: #ffffff;
+}
+
+.queue-slot-card.empty {
+  opacity: 0.65;
+  border-style: dashed;
+}
+
+.slot-index {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 800;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-xs);
+  background-color: var(--uber-surface-subtle);
+  border: 1px solid var(--uber-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.slot-content-occupied {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.slot-rider-info { display: flex; flex-direction: column; }
+
+.slot-rider-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.slot-rider-name { font-size: 12px; font-weight: 800; }
+.slot-ride-id { font-size: 9px; font-family: var(--font-mono); color: var(--uber-gray-muted); }
+.slot-route { font-size: 10px; color: var(--uber-gray-text); }
+
+.slot-meta-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.slot-fare-badge { font-size: 12px; font-weight: 800; color: var(--uber-green); }
+.slot-badge-waiting {
+  font-size: 8px;
+  font-weight: 700;
+  background-color: var(--uber-blue-light);
+  color: var(--uber-blue);
+  padding: 1px 5px;
+  border-radius: var(--radius-full);
+}
+
+.slot-content-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--uber-gray-muted);
+  font-weight: 600;
+}
+
+.slot-empty-circle {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1.5px dashed var(--uber-border-strong);
+}
+
+.queue-meter-wrap {
+  width: 100%;
+  height: 4px;
+  background-color: var(--uber-surface-subtle);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.queue-meter-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #000000, #276ef1);
+  transition: width 0.3s ease;
+}
+
+[data-theme="dark"] .queue-meter-bar {
+  background: linear-gradient(90deg, #276ef1, #7c3aed);
+}
+
+/* System Status (OS Semaphores) */
+.system-status-card {
+  background-color: var(--uber-surface-subtle);
+  border: 1px solid var(--uber-border);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  margin-top: auto;
+}
+
+.status-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.status-title-group { display: flex; align-items: center; gap: 6px; }
+.status-shield-icon { font-size: 14px; }
+.status-title-group h3 { font-size: 11px; font-weight: 800; }
+.status-title-group small { font-size: 8px; color: var(--uber-gray-muted); }
+
+.status-badge-live {
+  font-size: 8px;
+  font-weight: 800;
+  background-color: var(--uber-green);
+  color: #ffffff;
+  padding: 1px 5px;
+  border-radius: var(--radius-full);
+}
+
+.status-primitives-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+}
+
+.primitive-card {
+  background-color: var(--uber-card);
+  border: 1px solid var(--uber-border);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  text-align: center;
+}
+
+.primitive-name {
+  font-size: 11px;
+  font-weight: 800;
+  font-family: var(--font-mono);
+}
+
+.empty-card .primitive-name { color: var(--uber-blue); }
+.full-card .primitive-name { color: var(--uber-green); }
+.mutex-card .primitive-name { color: var(--uber-amber); }
+
+.primitive-type { font-size: 8px; color: var(--uber-gray-muted); font-weight: 600; }
+.primitive-value { font-size: 16px; font-weight: 800; font-family: var(--font-mono); margin: 2px 0; }
+.primitive-desc { font-size: 9px; color: var(--uber-gray-text); }
+.primitive-formula { font-size: 8px; color: var(--uber-gray-muted); font-family: var(--font-mono); border-top: 1px solid var(--uber-border); margin-top: 2px; padding-top: 2px; }
+
+/* ==========================================================================
+   COLUMN 3: DRIVER PARTNER PORTAL (CONSUMER)
+   ========================================================================== */
+.uber-driver-dock {
+  background-color: var(--uber-surface-subtle);
+  border: 1px solid var(--uber-border);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.driver-dock-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.driver-duty-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background-color: var(--uber-green-light);
+  border: 1px solid var(--uber-green-border);
+  color: var(--uber-green);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.duty-beacon {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--uber-green);
+  animation: beaconPulse 1.5s infinite;
+}
+
+.driver-payout-counter { text-align: right; }
+.driver-payout-counter small { font-size: 8px; color: var(--uber-gray-muted); display: block; }
+.driver-payout-counter strong { font-size: 13px; font-weight: 800; color: var(--uber-green); }
+
+.driver-selection-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dock-label { font-size: 10px; font-weight: 700; color: var(--uber-gray-muted); }
+
+.driver-select-box {
+  flex: 1;
+  padding: 5px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font-sans);
+  background-color: var(--uber-card);
+  color: var(--uber-text-primary);
+  border: 1px solid var(--uber-border);
+  border-radius: var(--radius-sm);
+  outline: none;
+  cursor: pointer;
+}
+
+/* Incoming Offers Radar */
+.incoming-offers-box {
+  background-color: var(--uber-card);
+  border: 1px solid var(--uber-border);
+  border-radius: var(--radius-md);
+  padding: 8px;
+  min-height: 85px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.offer-radar-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.radar-ping {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: var(--uber-blue);
+  animation: beaconPulse 1s infinite;
+}
+
+.radar-title { font-size: 10px; font-weight: 800; color: var(--uber-gray-text); }
+
+.offer-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 10px 4px;
+  color: var(--uber-gray-muted);
+  font-size: 10px;
+}
+
+.offer-icon { font-size: 16px; margin-bottom: 2px; }
+
+.incoming-offer-card-active {
+  background-color: var(--uber-surface-subtle);
+  border: 1px solid var(--uber-green-border);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  animation: slideInActor 0.25s ease;
+}
+
+.offer-row-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.offer-passenger-name { font-size: 11px; font-weight: 800; }
+.offer-fare-badge { font-size: 13px; font-weight: 800; color: var(--uber-green); }
+.offer-route-text { font-size: 10px; color: var(--uber-gray-text); }
+
+.offer-meta-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 9px;
+  color: var(--uber-gray-muted);
+  border-top: 1px solid var(--uber-border);
+  padding-top: 3px;
+}
+
+/* Driver Accept Button */
+.uber-driver-accept-btn {
+  background-color: var(--uber-green);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 9px 12px;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.2);
+  text-align: center;
+}
+
+.uber-driver-accept-btn:hover { background-color: #047857; }
+.uber-driver-accept-btn:active { transform: scale(0.98); }
+
+.accept-cta-title { font-size: 12px; font-weight: 800; display: block; }
+.accept-cta-sub { font-size: 8px; opacity: 0.9; }
+
+/* Actor Showcase Boxes */
+.actor-showcase-box {
+  min-height: 75px;
+  background-color: var(--uber-surface-subtle);
+  border: 1px dashed var(--uber-border-strong);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+}
+
+.idle-placeholder {
+  text-align: center;
+  color: var(--uber-gray-muted);
+  font-size: 11px;
+}
+
+.idle-avatar { font-size: 18px; margin-bottom: 2px; opacity: 0.6; }
+
+.active-actor-card {
+  background-color: var(--uber-card);
+  border: 1px solid var(--uber-border-strong);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  box-shadow: var(--shadow-subtle);
+  animation: slideInActor 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.active-actor-card.hidden { display: none; }
+
+@keyframes slideInActor {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.actor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.actor-id-badge {
+  font-size: 9px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  background-color: var(--uber-surface-subtle);
+  padding: 1px 5px;
+  border-radius: var(--radius-xs);
+}
+
+.actor-status-pill {
+  font-size: 9px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+}
+
+.status-booking { background-color: var(--uber-blue-light); color: var(--uber-blue); }
+.status-accepted { background-color: var(--uber-green-light); color: var(--uber-green); }
+
+.actor-profile-row { display: flex; align-items: center; gap: 8px; }
+
+.actor-avatar-circle {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background-color: var(--uber-surface-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  border: 1px solid var(--uber-border);
+}
+
+.actor-details h4 { font-size: 11px; font-weight: 800; }
+.actor-details p { font-size: 10px; color: var(--uber-gray-text); }
+
+.actor-route-line {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--uber-border);
+  font-size: 10px;
+  color: var(--uber-gray-text);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Waiting Bays */
+.waiting-area-wrapper {
+  background-color: var(--uber-surface-subtle);
+  border: 1px solid var(--uber-border);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  margin-top: auto;
+}
+
+.waiting-area-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.waiting-title { font-size: 10px; font-weight: 700; }
+.waiting-title small { font-weight: 500; color: var(--uber-gray-muted); }
+
+.waiting-count-badge {
+  font-size: 9px;
+  font-weight: 800;
+  background-color: var(--uber-amber);
+  color: #ffffff;
+  padding: 1px 5px;
+  border-radius: var(--radius-full);
+}
+
+.waiting-queue-lane {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 38px;
+  max-height: 85px;
+  overflow-y: auto;
+}
+
+.waiting-empty-msg {
+  font-size: 10px;
+  color: var(--uber-gray-muted);
+  font-style: italic;
+  padding: 4px;
+  text-align: center;
+}
+
+.waiting-person-item {
+  background-color: var(--uber-card);
+  border: 1px solid var(--uber-border);
+  border-radius: var(--radius-sm);
+  padding: 3px 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+}
+
+.waiting-person-info { display: flex; align-items: center; gap: 4px; font-weight: 700; }
+.waiting-person-status { color: var(--uber-amber); font-weight: 700; font-size: 9px; }
+
+/* ==========================================================================
+   ACTIVITY LOG FEED & EDUCATIONAL GUIDE
+   ========================================================================== */
+.activity-section,
+.educational-section {
+  max-width: 1440px;
+  margin: 16px auto;
+  padding: 0 24px;
+}
+
+.educational-section.hidden { display: none; }
+
+.activity-container,
+.edu-card {
+  background-color: var(--uber-card);
+  border: 1px solid var(--uber-border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  box-shadow: var(--shadow-subtle);
+}
+
+.activity-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.activity-title-group { display: flex; align-items: center; gap: 8px; }
+.feed-icon { font-size: 18px; }
+.activity-title-group h3 { font-size: 14px; font-weight: 800; }
+
+.activity-controls { display: flex; align-items: center; gap: 10px; }
+
+.activity-filters {
+  display: flex;
+  gap: 4px;
+  background-color: var(--uber-surface-subtle);
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--uber-border);
+}
+
+.filter-tab {
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  border: none;
+  background: transparent;
+  color: var(--uber-gray-text);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+}
+
+.filter-tab.active {
+  background-color: var(--uber-card);
+  color: var(--uber-text-primary);
+  box-shadow: var(--shadow-subtle);
+}
+
+.clear-feed-btn {
+  padding: 3px 8px;
+  font-size: 11px;
+  border: 1px solid var(--uber-border);
+  background: transparent;
+  color: var(--uber-gray-text);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.activity-feed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.activity-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: var(--radius-xs);
+  font-size: 11px;
+  background-color: var(--uber-surface-subtle);
+}
+
+.activity-time { font-family: var(--font-mono); color: var(--uber-gray-muted); font-size: 10px; }
+.activity-badge { font-size: 9px; font-weight: 800; padding: 1px 5px; border-radius: var(--radius-xs); }
+.badge-rider { background-color: var(--uber-blue-light); color: var(--uber-blue); }
+.badge-driver { background-color: var(--uber-green-light); color: var(--uber-green); }
+.badge-system { background-color: var(--uber-border); color: var(--uber-gray-text); }
+.activity-text { flex: 1; }
+
+/* Educational Guide */
+.edu-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; font-size: 22px; }
+.edu-header h3 { font-size: 18px; font-weight: 800; }
+.edu-header small { font-size: 12px; color: var(--uber-gray-muted); }
+
+.edu-content-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 900px) {
+  .edu-content-grid { grid-template-columns: 1fr; }
+}
+
+.edu-block {
+  background-color: var(--uber-surface-subtle);
+  border: 1px solid var(--uber-border);
+  border-radius: var(--radius-md);
+  padding: 14px;
+}
+
+.edu-block.full-width { grid-column: 1 / -1; }
+.edu-block h4 { font-size: 13px; font-weight: 800; margin-bottom: 10px; }
+
+.metaphor-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.metaphor-table th, .metaphor-table td { padding: 8px 10px; border-bottom: 1px solid var(--uber-border); text-align: left; }
+.metaphor-table th { background-color: var(--uber-card); font-weight: 700; }
+
+.code-snippet-box pre {
+  background-color: #0b1120;
+  color: #f8fafc;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  overflow-x: auto;
+}
+
+.faq-list { display: flex; flex-direction: column; gap: 8px; }
+.faq-item { background-color: var(--uber-card); border: 1px solid var(--uber-border); border-radius: var(--radius-sm); padding: 8px 12px; cursor: pointer; }
+.faq-item summary { font-weight: 700; font-size: 13px; }
+.faq-item p { margin-top: 6px; font-size: 12px; color: var(--uber-gray-text); line-height: 1.5; }
+
+/* ==========================================================================
+   MODALS: TRIP SHEET, RACE & DEADLOCK LABS
+   ========================================================================== */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.modal-backdrop.active { opacity: 1; pointer-events: auto; }
+
+.modal-card {
+  background-color: var(--uber-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--uber-border);
+  box-shadow: var(--shadow-floating);
+  max-width: 580px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  transform: scale(0.95);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.modal-backdrop.active .modal-card { transform: scale(1); }
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--uber-border);
+}
+
+.modal-title-wrap { display: flex; align-items: center; gap: 10px; }
+.modal-icon { font-size: 22px; }
+.modal-title-wrap h3 { font-size: 16px; font-weight: 800; }
+.modal-title-wrap small { font-size: 11px; color: var(--uber-gray-muted); }
+
+.modal-close {
+  font-size: 22px;
+  background: transparent;
+  border: none;
+  color: var(--uber-gray-muted);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.modal-body {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Trip Tracking Sheet */
+.trip-driver-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background-color: var(--uber-surface-subtle);
+  border: 1px solid var(--uber-border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+}
+
+.trip-driver-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background-color: var(--uber-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+
+.trip-driver-info { flex: 1; }
+.trip-driver-info h4 { font-size: 14px; font-weight: 800; }
+.trip-driver-info p { font-size: 12px; color: var(--uber-gray-text); }
+.trip-driver-rating { font-size: 11px; color: var(--uber-green); font-weight: 700; }
+
+.trip-otp-badge {
+  text-align: center;
+  background-color: #000000;
+  color: #ffffff;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+}
+
+[data-theme="dark"] .trip-otp-badge {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+.trip-otp-badge small { font-size: 9px; display: block; opacity: 0.8; letter-spacing: 0.5px; }
+.trip-otp-badge strong { font-size: 18px; font-family: var(--font-mono); letter-spacing: 2px; }
+
+.trip-route-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  background-color: var(--uber-surface-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.route-item { display: flex; align-items: center; gap: 10px; }
+.dot-green { width: 8px; height: 8px; border-radius: 50%; background-color: #22c55e; }
+.dot-red { width: 8px; height: 8px; background-color: #e11900; }
+.route-item small { font-size: 9px; font-weight: 700; color: var(--uber-gray-muted); display: block; }
+.route-item p { font-size: 12px; font-weight: 700; }
+
+.trip-status-timeline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+}
+
+.timeline-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--uber-gray-muted);
+  flex: 1;
+}
+
+.timeline-step .step-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--uber-border-strong);
+}
+
+.timeline-step.done { color: var(--uber-green); }
+.timeline-step.done .step-dot { background-color: var(--uber-green); }
+
+.timeline-step.active { color: var(--uber-blue); font-weight: 800; }
+.timeline-step.active .step-dot { background-color: var(--uber-blue); animation: beaconPulse 1s infinite; }
+
+.trip-fare-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--uber-border);
+  padding-top: 10px;
+}
+
+.fare-total small { font-size: 10px; color: var(--uber-gray-muted); display: block; }
+.fare-total strong { font-size: 16px; font-weight: 800; }
+
+.uber-primary-pill {
+  background-color: #000000;
+  color: #ffffff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+[data-theme="dark"] .uber-primary-pill {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+/* Labs Styles */
+.race-interactive-stage {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr 1fr;
+  gap: 10px;
+  align-items: center;
+  background-color: var(--uber-surface-subtle);
+  border: 1px solid var(--uber-border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+}
+
+.race-driver-box {
+  background-color: var(--uber-card);
+  border: 1px solid var(--uber-border);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  text-align: center;
+}
+
+.race-driver-box.active-access { border-color: var(--uber-amber); box-shadow: 0 0 10px rgba(217, 119, 6, 0.3); }
+.race-driver-box.conflict-box { border-color: var(--uber-red); background-color: var(--uber-red-light); }
+
+.race-avatar { font-size: 22px; }
+.race-driver-status { font-size: 10px; font-weight: 700; color: var(--uber-gray-text); }
+
+.race-ride-card {
+  background-color: var(--uber-card);
+  border: 2px solid var(--uber-blue);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  text-align: center;
+}
+
+.race-ride-card.corrupted { border-color: var(--uber-red); background-color: var(--uber-red-light); animation: shakeCorrupt 0.4s ease; }
+
+@keyframes shakeCorrupt {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+.ride-card-badge { font-size: 10px; font-weight: 800; font-family: var(--font-mono); color: var(--uber-blue); }
+.ride-card-name { font-size: 13px; font-weight: 800; }
+.ride-card-route { font-size: 10px; color: var(--uber-gray-text); margin: 2px 0; }
+.ride-card-status { font-size: 10px; font-weight: 700; color: var(--uber-amber); }
+
+.race-lock-indicator {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 6px;
+  background-color: var(--uber-surface-subtle);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--uber-border);
+}
+
+.race-timeline {
+  background-color: var(--uber-surface-subtle);
+  border: 1px solid var(--uber-border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  font-size: 11px;
+  max-height: 120px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.race-timeline-item { padding: 2px 4px; border-radius: var(--radius-xs); }
+.race-timeline-item.highlight-step { background-color: var(--uber-card); font-weight: 600; }
+.race-timeline-item.conflict-step { background-color: var(--uber-red-light); color: var(--uber-red); font-weight: 700; }
+
+.race-outcome-box { padding: 10px; border-radius: var(--radius-sm); font-size: 12px; line-height: 1.4; }
+.race-outcome-box.hidden { display: none; }
+.race-outcome-box.error { background-color: var(--uber-red-light); border: 1px solid var(--uber-red-border); color: var(--uber-red); }
+.race-outcome-box.success { background-color: var(--uber-green-light); border: 1px solid var(--uber-green-border); color: var(--uber-green); }
+
+.modal-actions-bar { display: flex; gap: 10px; }
+
+.lab-btn {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 800;
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+}
+
+.btn-danger-lab { background-color: var(--uber-red); color: #ffffff; }
+.btn-success-lab { background-color: var(--uber-green); color: #ffffff; }
+
+/* Deadlock Grid */
+.deadlock-comparison-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr 1fr;
+  gap: 10px;
+  align-items: center;
+  background-color: var(--uber-surface-subtle);
+  border: 1px solid var(--uber-border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+}
+
+.deadlock-actor-card, .deadlock-queue-card {
+  background-color: var(--uber-card);
+  border: 1px solid var(--uber-border);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  text-align: center;
+}
+
+.actor-avatar { font-size: 22px; }
+.actor-role { font-size: 10px; color: var(--uber-gray-muted); }
+.actor-state-badge { font-size: 10px; font-weight: 700; color: var(--uber-amber); margin-top: 4px; }
+.dl-queue-badge { font-size: 11px; font-weight: 800; color: var(--uber-red); }
+.dl-queue-info { font-size: 10px; font-family: var(--font-mono); color: var(--uber-gray-text); margin: 4px 0; }
+.dl-lock-pill { font-size: 10px; font-weight: 700; }
